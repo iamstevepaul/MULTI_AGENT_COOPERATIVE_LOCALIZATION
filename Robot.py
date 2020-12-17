@@ -3,7 +3,8 @@ import numpy as np
 import math
 from random import random
 
-class Robot():
+
+class Robot:
 
     def __init__(self,
                  x=0.0,
@@ -25,11 +26,11 @@ class Robot():
         self.theta_predict = theta
         self.theta_correct = theta
         self.omega = omega
-        self.sigma = 0.01*np.identity(3) # number of states is 3 - this is the covariance matrix
+        self.sigma = 0.1*np.identity(3) # number of states is 3 - this is the covariance matrix
         self.ultra_sonic = ultra_sonic
         self.bearing = bearing
         self.gps = gps
-        self.alpha1 = 0.01
+        self.alpha1 = 0.1
         self.alpha2 = 0.03
         self.alpha3 = 0.09
         self.alpha4 = 0.08
@@ -42,7 +43,7 @@ class Robot():
     def sense_odometry(self):
         noise = (random()*2 - 1)*.1
         v = self.v + noise
-        noise = (random() * 2 - 1) * .001
+        noise = (random() * 2 - 1) * .1
         omega = self.omega + noise
         return np.array([v, omega])
 
@@ -56,21 +57,26 @@ class Robot():
         self.theta_predict = self.theta_correct + omega*dt
 
         # update covariance
-        Gt = np.array([[1, 0, -v*dt*math.sin(self.theta_correct + omega * dt / 2)], [0, 1, v*dt*math.cos(self.theta_correct + omega * dt / 2)], [0, 0, 1]])
+        Gt = np.array([[1, 0, -v*dt*math.sin(self.theta_correct + omega * dt / 2)],
+                       [0, 1, v*dt*math.cos(self.theta_correct + omega * dt / 2)],
+                       [0, 0, 1]])
 
-        Mt = np.array([[self.alpha1*(v*v) + self.alpha2*(omega*omega), 0], [0, self.alpha3*(v*v) + self.alpha4*(omega*omega)]])
-        Vt = np.array([[math.cos(self.theta_correct + omega*dt/2), -math.sin(self.theta_correct + omega*dt/2)/2], [math.sin(self.theta_correct + omega*dt/2), math.cos(self.theta_correct + omega*dt/2)/2], [0, 1]])
-        self.sigma = np.matmul(np.matmul(Gt, self.sigma), np.transpose(Gt)) + np.matmul(np.matmul(Vt, Mt), np.transpose(Vt))
+        Mt = np.array([[self.alpha1*(v*v) + self.alpha2*(omega*omega), 0],
+                       [0, self.alpha3*(v*v) + self.alpha4*(omega*omega)]])
+        Vt = np.array([[math.cos(self.theta_correct + omega*dt/2), -math.sin(self.theta_correct + omega*dt/2)/2],
+                       [math.sin(self.theta_correct + omega*dt/2), math.cos(self.theta_correct + omega*dt/2)/2],
+                       [0, 1]])
+        self.sigma = np.matmul(np.matmul(Gt, self.sigma), np.transpose(Gt)) + \
+                     np.matmul(np.matmul(Vt, Mt), np.transpose(Vt))
         # print(self.sigma)
-
 
     def sense_ultra_sonic(self, landmarks):
         #change the noise here
         readings = []
         for landmark in landmarks:
-            noise = (random()*2 - 1)*0.001
+            noise = (random()*2 - 1)*0.1
             d = math.sqrt((landmark[0] - self.x_truth)**2 + (landmark[1] - self.y_truth)**2) + noise
-            noise = (random() * 2 - 1) * 0.001
+            noise = (random() * 2 - 1) * 0.1
             bearing = math.atan2(landmark[1] - self.y_truth, landmark[0] - self.x_truth) - self.theta_predict + noise
             bearing = self.constraint_bearing(bearing)
             readings.append([d, bearing])
@@ -101,7 +107,6 @@ class Robot():
             sigma_bearing = 3
             Qt = [[sigma_range**2, 0], [0, sigma_bearing**2]]
             St = np.matmul(np.matmul(Ht_i, self.sigma), np.transpose(Ht_i)) + Qt  # add the Qt matrix as well
-            # print(St)
             Kt_i = np.matmul(np.matmul(self.sigma, np.transpose(Ht_i)), np.linalg.inv(St))
             corr = np.matmul(Kt_i, z_org[i]-z_hat_i)
 
@@ -115,15 +120,13 @@ class Robot():
         self.x_correct = self.x_predict
         self.y_correct = self.y_predict
         self.theta_correct = self.theta_predict
-        # print(self.x_truth, self.x_correct)
-        # print(self.y_truth, self.y_correct)
-        # print('Theta')
-        # print(self.theta_truth, self.theta_correct)
-
+        print(self.x_truth, self.x_correct)
+        print(self.y_truth, self.y_correct)
+        print('Theta')
+        print(self.theta_truth, self.theta_correct)
 
     def sense_bearing(self):
         return self.bearing + (random()*2 -1) ## this has to be changed
-
 
     def sense_gps(self):
         pass
