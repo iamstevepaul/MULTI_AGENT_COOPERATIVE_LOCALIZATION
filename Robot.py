@@ -47,7 +47,7 @@ class Robot:
         omega = self.omega + noise
         return np.array([v, omega])
 
-    def motion_update(self, dt):
+    def motion_update_landmark(self, dt):
         # this method should only be called after odometery update
         odo_vals = self.sense_odometry()
         v = odo_vals[0]
@@ -70,7 +70,7 @@ class Robot:
                      np.matmul(np.matmul(Vt, Mt), np.transpose(Vt))
         # print(self.sigma)
 
-    def sense_ultra_sonic(self, landmarks):
+    def sense_ultra_sonic_landmark(self, landmarks):
         #change the noise here
         readings = []
         for landmark in landmarks:
@@ -91,8 +91,8 @@ class Robot:
             bearing = bearing - 2 * math.pi
         return bearing
 
-    def sensor_update(self, landmarks):
-        z_org = self.sense_ultra_sonic(landmarks)
+    def sensor_update_landmark(self, landmarks):
+        z_org = self.sense_ultra_sonic_landmark(landmarks)
         i=0
         for landmark in landmarks:
             x_dist = landmark[0] - self.x_predict

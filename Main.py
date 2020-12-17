@@ -40,8 +40,8 @@ for i in range(n_time_Steps):
         robot = robots[j]
         robot.update_true_position(dt)
         robot.update_odometer(v=robot.v, omega=robot.omega)
-        robot.motion_update(dt)
-        robot.sensor_update(landmarks)
+        robot.motion_update_landmark(dt)
+        robot.sensor_update_landmark(landmarks)
         bearing = robot.sense_bearing()
         px.append(robot.x_truth)
         py.append(robot.y_truth)
