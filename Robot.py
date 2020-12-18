@@ -138,10 +138,10 @@ class Robot:
         self.x_correct = self.x_predict
         self.y_correct = self.y_predict
         self.theta_correct = self.theta_predict
-        print(self.x_truth, self.x_correct)
-        print(self.y_truth, self.y_correct)
-        print('Theta')
-        print(self.theta_truth, self.theta_correct)
+        # print(self.x_truth, self.x_correct)
+        # print(self.y_truth, self.y_correct)
+        # print('Theta')
+        # print(self.theta_truth, self.theta_correct)
 
     def relative_measurement_update(self, Xj, sigma_ji, z_org, robot_id):
         # think of including equations 12, 13, and 14 properly
