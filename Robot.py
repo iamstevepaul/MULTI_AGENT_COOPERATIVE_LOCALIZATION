@@ -16,7 +16,12 @@ class Robot:
                  bearing=0.0,
                  gps=0.0,
                  n_agents = 10,
-                 id = 0):
+                 id = 0,
+                 sensing_range = 20,
+                 v_noise = 0.1,
+                 omega_noise = 0.1,
+                 range_noise = 0.1,
+                 bearing_noise = 0.1):
         self.x_truth = x
         self.y_truth = y
         self.x_predict = x
@@ -40,16 +45,25 @@ class Robot:
         self.alpha4 = 0.08
         self.id = id
         self.n_agents = n_agents
+        self.sensing_range = sensing_range
+
+        ## noises
+        self.v_noise = v_noise
+        self.omega_noise = omega_noise
+        self.range_noise = range_noise
+        self.bearing_noise = bearing_noise
 
     def update_true_position(self, dt): # this should be updated
+        self.theta_truth += self.omega*dt
+        self.theta_truth = self.constraint_bearing(self.theta_truth)
         self.x_truth += self.v * dt*math.cos(self.theta_truth)
         self.y_truth += self.v * dt*math.sin(self.theta_truth)
         # theta_truth does not change
 
     def sense_odometry(self):
-        noise = (random()*2 - 1)*.1
+        noise = np.random.normal(0, self.v_noise, 1)[0]
         v = self.v + noise
-        noise = (random() * 2 - 1) * .1
+        noise = np.random.normal(0, self.omega_noise, 1)[0]
         omega = self.omega + noise
         return np.array([v, omega])
 
@@ -87,9 +101,9 @@ class Robot:
         #change the noise here
         readings = []
         for landmark in landmarks:
-            noise = (random()*2 - 1)*0.1
+            noise = (np.random.normal(0, self.range_noise, 1)[0])
             d = math.sqrt((landmark[0] - self.x_truth)**2 + (landmark[1] - self.y_truth)**2) + noise
-            noise = (random() * 2 - 1) * 0.1
+            noise = (np.random.normal(0, self.bearing_noise, 1)[0])
             bearing = math.atan2(landmark[1] - self.y_truth, landmark[0] - self.x_truth) - self.theta_truth + noise
             bearing = self.constraint_bearing(bearing)
             readings.append([d, bearing])
@@ -113,26 +127,28 @@ class Robot:
             y_dist = landmark[1] - self.y_predict
             q = x_dist**2 + y_dist**2
 
-            bearing = math.atan2(y_dist, x_dist) - self.theta_predict
-            bearing = self.constraint_bearing(bearing)
-            z_hat_i = np.array([math.sqrt(q), bearing])
-            Ht_i = np.array([[-x_dist/math.sqrt(q), -y_dist/math.sqrt(q), 0], [y_dist/q, -x_dist/q, -1]])
-            sigma_range = 2
-            sigma_bearing = 3
-            Qt = [[sigma_range**2, 0], [0, sigma_bearing**2]]
-            St = np.matmul(np.matmul(Ht_i, self.Sigma_ii), np.transpose(Ht_i)) + Qt  # add the Qt matrix as well
-            Kt_i = np.matmul(np.matmul(self.Sigma_ii, np.transpose(Ht_i)), np.linalg.inv(St))
-            corr = np.matmul(Kt_i, z_org[i]-z_hat_i)
+            if np.sqrt((landmark[0] - self.x_truth)**2 + (landmark[1] - self.y_truth)**2) <= self.sensing_range:
 
-            self.x_predict += corr[0]
-            self.y_predict += corr[1]
-            self.theta_predict += corr[2]
-            self.theta_predict = self.constraint_bearing(self.theta_predict)
-            self.Sigma_ii = np.matmul(np.identity(3) - np.matmul(Kt_i, Ht_i), self.Sigma_ii)
-            for j in range(self.n_agents):
-                if j != self.id:
-                    self.Sigma_ij[j] = np.matmul(np.identity(3) - np.matmul(Kt_i, Ht_i), self.Sigma_ij[j])
-                    self.sigma_ij[j] = np.matmul(np.identity(3) - np.matmul(Kt_i, Ht_i), self.sigma_ij[j])
+                bearing = math.atan2(y_dist, x_dist) - self.theta_predict
+                bearing = self.constraint_bearing(bearing)
+                z_hat_i = np.array([math.sqrt(q), bearing])
+                Ht_i = np.array([[-x_dist/math.sqrt(q), -y_dist/math.sqrt(q), 0], [y_dist/q, -x_dist/q, -1]])
+                sigma_range = 2
+                sigma_bearing = 3
+                Qt = [[sigma_range**2, 0], [0, sigma_bearing**2]]
+                St = np.matmul(np.matmul(Ht_i, self.Sigma_ii), np.transpose(Ht_i)) + Qt  # add the Qt matrix as well
+                Kt_i = np.matmul(np.matmul(self.Sigma_ii, np.transpose(Ht_i)), np.linalg.inv(St))
+                corr = np.matmul(Kt_i, z_org[i]-z_hat_i)
+
+                self.x_predict += corr[0]
+                self.y_predict += corr[1]
+                self.theta_predict += corr[2]
+                self.theta_predict = self.constraint_bearing(self.theta_predict)
+                self.Sigma_ii = np.matmul(np.identity(3) - np.matmul(Kt_i, Ht_i), self.Sigma_ii)
+                for j in range(self.n_agents):
+                    if j != self.id:
+                        self.Sigma_ij[j] = np.matmul(np.identity(3) - np.matmul(Kt_i, Ht_i), self.Sigma_ij[j])
+                        self.sigma_ij[j] = np.matmul(np.identity(3) - np.matmul(Kt_i, Ht_i), self.sigma_ij[j])
             i=i+1
 
         self.x_correct = self.x_predict
@@ -143,12 +159,15 @@ class Robot:
         # print('Theta')
         # print(self.theta_truth, self.theta_correct)
 
+
     def relative_measurement_update(self, Xj, sigma_ji, z_org, robot_id):
         # think of including equations 12, 13, and 14 properly
+
         self.Sigma_ij[robot_id] = np.matmul(self.sigma_ij[robot_id], np.transpose(sigma_ji))
         xj = Xj[0]
         yj = Xj[1]
         theta_j = Xj[2]
+        (xj - self.x_correct) ** 2 + (yj - self.y_correct) ** 2
         q = (xj - self.x_correct)**2 + (yj - self.y_correct)**2
         Ht = np.array([[-(xj - self.x_correct)/math.sqrt(q), -(yj - self.y_correct)/math.sqrt(q), 0],
                        [(yj - self.y_correct)/q, (xj - self.x_correct)/q, -1]])
