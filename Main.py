@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 max_rectangle = 100
 min_rectangle = 0
 n_landmarks = 6
-n_agents = 4
+n_agents = 7
 n_waypoints = 2
 v_max = 10
 v_min = 10
@@ -37,6 +37,7 @@ omega = 0.628
 landmarks = np.array([[random.random(), random.random()] for i in range(n_landmarks)])*max_rectangle
 
 dt = total_time/n_time_Steps
+
 time = 0
 robots = [Robot(x=start_points[i,0],
                 y=start_points[i,1],
@@ -104,6 +105,7 @@ for i in range(n_time_Steps):
     robots_error.append(err_pos)
     print(time)
 
+
 robot_true_positions = np.array(robot_true_positions)
 robots_estimated_positions = np.array(robots_estimated_positions)
 sigma = np.array(sigma)
@@ -111,6 +113,10 @@ sigma30 = 3*sigma[:,0, 0]**.5
 sigma31 = 3*sigma[:,0, 1]**.5
 sigma32 = 3*sigma[:,0, 2]**.5
 robots_error = np.array(robots_error)
+robots_error_rmse = ((robots_error**2).mean(1))**0.5
+# plt.plot(robots_error_rmse, label='Error')
+# plt.show()
+
 # time_track = np.array(time_track)
 
 SMALL_SIZE = 16
@@ -126,7 +132,7 @@ plt.rc('legend', fontsize=MEDIUM_SIZE)    # legend fontsize
 plt.rc('figure', titlesize=BIGGER_SIZE)
 
 plt.subplot(311)
-plt.title('Estimation error with 4 robots')
+plt.title('Estimation error with 3\u03C3 bounds')
 plt.plot(sigma30, 'g-')
 plt.plot(-sigma30, 'g-', label='3\u03C3')
 plt.legend()

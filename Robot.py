@@ -78,14 +78,14 @@ class Robot:
         self.theta_predict = self.theta_correct + omega*dt
 
         # update covariance
-        Gt = np.array([[1, 0, -v*dt*math.sin(self.theta_correct + omega * dt / 2)],
-                       [0, 1, v*dt*math.cos(self.theta_correct + omega * dt / 2)],
+        Gt = np.array([[1, 0, -v*dt*math.sin(self.theta_correct + omega * dt)],
+                       [0, 1, v*dt*math.cos(self.theta_correct + omega * dt)],
                        [0, 0, 1]])
 
         Mt = np.array([[self.alpha1*(v*v) + self.alpha2*(omega*omega), 0],
                        [0, self.alpha3*(v*v) + self.alpha4*(omega*omega)]])
-        Vt = np.array([[math.cos(self.theta_correct + omega*dt/2), -math.sin(self.theta_correct + omega*dt/2)/2],
-                       [math.sin(self.theta_correct + omega*dt/2), math.cos(self.theta_correct + omega*dt/2)/2],
+        Vt = np.array([[math.cos(self.theta_correct + omega*dt), -math.sin(self.theta_correct + omega*dt)],
+                       [math.sin(self.theta_correct + omega*dt), math.cos(self.theta_correct + omega*dt)],
                        [0, 1]])
         self.Sigma_ii = np.matmul(np.matmul(Gt, self.Sigma_ii), np.transpose(Gt)) + \
                      np.matmul(np.matmul(Vt, Mt), np.transpose(Vt))
@@ -171,11 +171,13 @@ class Robot:
         q = (xj - self.x_correct)**2 + (yj - self.y_correct)**2
         Ht = np.array([[-(xj - self.x_correct)/math.sqrt(q), -(yj - self.y_correct)/math.sqrt(q), 0],
                        [(yj - self.y_correct)/q, (xj - self.x_correct)/q, -1]])
+        Ht_j = np.array([[(xj - self.x_correct)/math.sqrt(q), (yj - self.y_correct)/math.sqrt(q), 0],
+                       [-(yj - self.y_correct)/q, -(xj - self.x_correct)/q, -1]])
         sigma_range = 2
         sigma_bearing = 3
         Qt = [[sigma_range ** 2, 0], [0, sigma_bearing ** 2]]
         St = np.matmul(np.matmul(Ht, self.Sigma_ij[robot_id]), np.transpose(Ht)) + Qt
-        Kt_i = np.matmul(np.matmul(self.Sigma_ij[robot_id], np.transpose(Ht)), np.linalg.inv(St))
+        Kt_i = np.matmul(np.matmul(self.Sigma_ii, np.transpose(Ht)) + np.matmul(self.Sigma_ij[robot_id], np.transpose(Ht)) , np.linalg.inv(St))
         bearing = math.atan2((yj - self.y_correct), (xj - self.x_correct)) - self.theta_predict
         bearing = self.constraint_bearing(bearing)
         z_hat_i = np.array([math.sqrt(q), bearing])
@@ -184,7 +186,9 @@ class Robot:
         self.y_predict += corr[1]
         self.theta_predict += corr[2]
         self.theta_predict = self.constraint_bearing(self.theta_predict)
-        self.Sigma_ii = np.matmul(np.identity(3) - np.matmul(Kt_i, Ht), self.Sigma_ii)
+        Sigma_ji = np.matmul(sigma_ji, np.transpose(self.sigma_ij[robot_id]))
+        self.Sigma_ii = np.matmul(np.identity(3) - np.matmul(Kt_i, Ht), self.Sigma_ii)\
+                        - np.matmul(np.matmul(Kt_i, Ht_j), Sigma_ji)
         self.Sigma_ij[robot_id] = np.matmul(np.identity(3) - np.matmul(Kt_i, Ht), self.Sigma_ij[robot_id])
         for j in range(self.n_agents):
             if j != self.id and j !=  robot_id:
