@@ -123,6 +123,8 @@ SMALL_SIZE = 16
 MEDIUM_SIZE = 20
 BIGGER_SIZE = 25
 
+dt = 0
+
 plt.rc('font', size=MEDIUM_SIZE)          # controls default text sizes
 plt.rc('axes', titlesize=MEDIUM_SIZE)     # fontsize of the axes title
 plt.rc('axes', labelsize=MEDIUM_SIZE)    # fontsize of the x and y labels
